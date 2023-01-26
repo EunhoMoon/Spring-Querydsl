@@ -2,21 +2,21 @@ package study.querydsl;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Expression;
+import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.QMemberDto;
+import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
-import study.querydsl.entity.QTeam;
 import study.querydsl.entity.Team;
 
 import javax.persistence.EntityManager;
@@ -24,6 +24,7 @@ import javax.persistence.EntityManagerFactory;
 
 import java.util.List;
 
+import static com.querydsl.core.types.Projections.*;
 import static com.querydsl.jpa.JPAExpressions.*;
 import static org.assertj.core.api.Assertions.*;
 import static study.querydsl.entity.QMember.*;
@@ -209,7 +210,7 @@ public class QuerydslBasicTest {
     }
 
     @Test
-    void theta_join() {
+    void thetaJoin() {
         em.persist(new Member("teamA"));
         em.persist(new Member("teamB"));
 
@@ -225,7 +226,7 @@ public class QuerydslBasicTest {
     }
 
     @Test
-    void join_on_filtering() {
+    void joinOnFiltering() {
         List<Tuple> result = queryFactory
                 .select(member, team)
                 .from(member)
@@ -238,7 +239,7 @@ public class QuerydslBasicTest {
     }
 
     @Test
-    void join_on_no_relation() {
+    void joinOnNoRelation() {
         em.persist(new Member("teamA"));
         em.persist(new Member("teamB"));
 
@@ -389,6 +390,70 @@ public class QuerydslBasicTest {
 
         for (String str : result) {
             log.info(str);
+        }
+    }
+
+    @Test
+    void findDtoBySetter() {
+        List<MemberDto> result = queryFactory
+                .select(bean(MemberDto.class, member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            log.info("memberDto={}", memberDto);
+        }
+    }
+
+    @Test
+    void findDtoByField() {
+        List<MemberDto> result = queryFactory
+                .select(fields(MemberDto.class, member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            log.info("memberDto={}", memberDto);
+        }
+    }
+
+    @Test
+    void findDtoByConstructor() {
+        List<MemberDto> result = queryFactory
+                .select(constructor(MemberDto.class, member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            log.info("memberDto={}", memberDto);
+        }
+    }
+
+    @Test
+    void findUserDtoWithExpressionUtils() {
+        QMember memberSub = new QMember("memberSub");
+        List<UserDto> result = queryFactory
+                .select(fields(UserDto.class,
+                        member.username.as("name"),
+                        ExpressionUtils.as(select(memberSub.age.max())
+                                .from(memberSub), "age")))
+                .from(member)
+                .fetch();
+
+        for (UserDto user : result) {
+            log.info("user={}", user);
+        }
+    }
+
+    @Test
+    void findDtoByQueryProjection() {
+        List<MemberDto> result = queryFactory
+                .select(new QMemberDto(member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            log.info("member={}", memberDto);
         }
     }
 
